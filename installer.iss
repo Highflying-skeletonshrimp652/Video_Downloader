@@ -1,7 +1,7 @@
 [Setup]
 AppId={{94B2AB15-91BE-4E31-9E2C-6079DE0C8F5A}
 AppName=Video Downloader
-AppVersion=1.1.0
+AppVersion=1.1.1
 AppPublisher=Video Downloader Project
 DefaultDirName={autopf}\VideoDownloader
 DefaultGroupName=Video Downloader
@@ -26,7 +26,7 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 Name: "desktopicon"; Description: "바탕 화면 바로가기 생성"; GroupDescription: "추가 작업:"; Flags: unchecked
 
 [Files]
-Source: "dist\VideoDownloader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "bin\ffmpeg.exe,bin\ffprobe.exe,bin\ffplay.exe,bin\yt-dlp.exe,bin\aria2c.exe,_internal\bin\yt-dlp.exe,_internal\bin\aria2c.exe,_internal\yt_dlp\*,_internal\cryptography\*,_internal\curl_cffi\*,_internal\PySide6\opengl32sw.dll"
+Source: "dist\VideoDownloader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "bin\ffmpeg.exe,bin\ffprobe.exe,bin\ffplay.exe,bin\yt-dlp.exe,bin\aria2c.exe,_internal\bin\yt-dlp.exe,_internal\bin\aria2c.exe,_internal\yt_dlp\*,_internal\cryptography\*,_internal\curl_cffi\*"
 
 [Icons]
 Name: "{autoprograms}\Video Downloader"; Filename: "{app}\VideoDownloader.exe"

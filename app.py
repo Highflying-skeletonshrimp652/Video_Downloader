@@ -38,6 +38,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebEngineCore import QWebEnginePage
 
 from platform_policy import evaluate_url
 
@@ -128,7 +130,8 @@ LEGAL_NOTICE_TEXT = (
     "- 다운로드 콘텐츠의 재배포 또는 상업적 이용\n\n"
     "제6조 (정책 변경 및 준거법)\n\n"
     "본 고지는 관련 법령 및 운영 정책에 따라 변경될 수 있습니다.\n"
-    "본 소프트웨어의 이용과 관련된 분쟁은 적용 가능한 관할 법령에 따릅니다."
+    "본 소프트웨어의 이용과 관련된 분쟁은 적용 가능한 관할 법령에 따릅니다.\n\n"
+    "현재 서비스에는 쿠팡 파트너스 활동의 일환으로 광고가 표시되며, 이에 따른 일정액의 수수료를 제공받습니다."
 )
 
 APP_STYLESHEET = """
@@ -242,6 +245,21 @@ QPushButton#donateCornerButton:hover {
 QPushButton#donateCornerButton:pressed {
     background: #E6C300;
 }
+QPushButton#inquiryCornerButton {
+    background: #E2E8F0;
+    color: #0F172A;
+    border: 1px solid #CBD5E1;
+    border-radius: 12px;
+    padding: 7px 16px;
+    font-size: 16px;
+    font-weight: 700;
+}
+QPushButton#inquiryCornerButton:hover {
+    background: #F1F5F9;
+}
+QPushButton#inquiryCornerButton:pressed {
+    background: #CBD5E1;
+}
 QCheckBox {
     color: #0F172A;
 }
@@ -256,12 +274,12 @@ QFrame#historyCard:hover {
 }
 QLabel#historyTitle {
     color: #0F172A;
-    font-size: 24px;
+    font-size: 14px;
     font-weight: 700;
 }
 QLabel#historyMeta {
     color: #334155;
-    font-size: 20px;
+    font-size: 14px;
 }
 QLabel#historyUrl {
     color: #1D4ED8;
@@ -1161,13 +1179,20 @@ class HistoryCard(QFrame):
         title.setWordWrap(True)
         content_col.addWidget(title)
 
-        url = QLabel(record.url)
-        url.setObjectName("historyUrl")
-        url.setWordWrap(True)
-        content_col.addWidget(url)
+        domain = QUrl(record.url).host().replace("www.", "")
+        platform_name = domain.split('.')[0].capitalize() if domain else "Unknown"
+
+        size_str = "-"
+        if record.output_path and os.path.exists(record.output_path):
+            try:
+                size_mb = os.path.getsize(record.output_path) / (1024 * 1024)
+                size_str = f"{size_mb:.1f} MB"
+            except Exception:
+                pass
 
         meta = QLabel(
-            f"상태: {record.status}  |  길이: {format_duration(record.duration_seconds)}  |  요청: {record.requested_at}"
+            f"플랫폼: {platform_name}  |  상태: {record.status}  |  용량: {size_str}  |  "
+            f"길이: {format_duration(record.duration_seconds)}  |  요청: {record.requested_at}"
         )
         meta.setObjectName("historyMeta")
         meta.setWordWrap(True)
@@ -1200,8 +1225,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.resize(APP_WINDOW_WIDTH, APP_WINDOW_HEIGHT)
-        self.setMinimumWidth(APP_WINDOW_WIDTH)
-        self.setMaximumWidth(APP_WINDOW_WIDTH)
+        self.setMinimumWidth(500)
 
         self.app_dir = resolve_app_dir()
         self.user_data_dir = resolve_user_data_dir()
@@ -1246,18 +1270,72 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.tab_settings, "설정")
         self.tabs.addTab(self.tab_history, "기록")
 
+        self.btn_inquiry_corner = QPushButton("💬 문의하기")
+        self.btn_inquiry_corner.setObjectName("inquiryCornerButton")
+        self.btn_inquiry_corner.setCursor(Qt.PointingHandCursor)
+        self.btn_inquiry_corner.setFixedHeight(40)
+        self.btn_inquiry_corner.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/weallnoob/Video_Downloader/issues")))
+
         self.btn_donate_corner = QPushButton("☕ Buy me a coffee")
         self.btn_donate_corner.setObjectName("donateCornerButton")
         self.btn_donate_corner.setCursor(Qt.PointingHandCursor)
         self.btn_donate_corner.setFixedHeight(40)
         self.btn_donate_corner.clicked.connect(self.open_buy_me_a_coffee)
+        
         donate_corner_wrap = QWidget()
         donate_corner_layout = QHBoxLayout(donate_corner_wrap)
         donate_corner_layout.setContentsMargins(0, 6, 8, 8)
+        donate_corner_layout.addWidget(self.btn_inquiry_corner)
         donate_corner_layout.addWidget(self.btn_donate_corner)
         self.tabs.setCornerWidget(donate_corner_wrap, Qt.TopRightCorner)
 
         root_layout.addWidget(self.tabs)
+
+        class ExternalWebPage(QWebEnginePage):
+            def acceptNavigationRequest(self, url, _type, isMainFrame):
+                if _type == QWebEnginePage.NavigationTypeLinkClicked:
+                    QDesktopServices.openUrl(url)
+                    return False
+                return super().acceptNavigationRequest(url, _type, isMainFrame)
+
+            def createWindow(self, _type):
+                if not hasattr(self, '_dummy'):
+                    self._dummy = QWebEngineView()
+                    page = QWebEnginePage(self.profile(), self._dummy)
+                    page.urlChanged.connect(lambda url: QDesktopServices.openUrl(url))
+                    self._dummy.setPage(page)
+                return self._dummy.page()
+
+        self.ad_banner = QWebEngineView()
+        self.ad_page = ExternalWebPage()
+        self.ad_banner.setPage(self.ad_page)
+        self.ad_banner.setMinimumHeight(60)
+        self.ad_banner.setMaximumHeight(120)
+        self.ad_banner.setHtml(
+            """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+                body { margin: 0; padding: 0; background-color: transparent; overflow: hidden; }
+                iframe { width: 100vw; height: 100vh; border: none; }
+            </style>
+            </head>
+            <body>
+                <iframe src="https://ads-partners.coupang.com/widgets.html?id=977251&template=carousel&trackingCode=AF8246234&subId=&width=100%25&height=100%25&tsource=" width="100%" height="100%" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+            </body>
+            </html>
+            """
+        )
+        self.ad_banner.setStyleSheet("background: transparent; border: none;")
+        self.ad_banner.setAttribute(Qt.WA_TranslucentBackground)
+        self.ad_page.setBackgroundColor(Qt.transparent)
+        
+        ad_layout = QHBoxLayout()
+        ad_layout.setContentsMargins(0, 5, 0, 5)
+        ad_layout.addWidget(self.ad_banner)
+        root_layout.addLayout(ad_layout)
+
         self.setCentralWidget(root)
 
         self._build_download_tab()

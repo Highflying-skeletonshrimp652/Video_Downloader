@@ -4,7 +4,7 @@ from pathlib import Path
 project_root = Path(globals().get("SPECPATH", Path.cwd())).resolve()
 datas = [('assets', 'assets')]
 excluded_module_names = ['yt_dlp', 'cryptography', 'curl_cffi']
-excluded_binary_names = {'opengl32sw.dll'}
+excluded_binary_names = set()
 
 
 def keep_toc_entry(entry) -> bool:
